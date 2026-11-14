@@ -1,5 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+PRODUCTION_FRONTEND_ORIGIN = "https://skill-bridge-ai-zx9m.vercel.app"
+
 
 class Settings(BaseSettings):
     # Application
@@ -26,7 +28,8 @@ class Settings(BaseSettings):
     # CORS
     cors_origins: str = (
         "http://localhost:3000,http://localhost:5173,"
-        "http://127.0.0.1:3000,http://127.0.0.1:5173"
+        "http://127.0.0.1:3000,http://127.0.0.1:5173,"
+        f"{PRODUCTION_FRONTEND_ORIGIN}"
     )
 
     model_config = SettingsConfigDict(
@@ -38,11 +41,14 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins_list(self) -> list[str]:
-        return [
+        origins = [
             origin.strip()
             for origin in self.cors_origins.split(",")
             if origin.strip()
         ]
+        if PRODUCTION_FRONTEND_ORIGIN not in origins:
+            origins.append(PRODUCTION_FRONTEND_ORIGIN)
+        return origins
 
 
 settings = Settings()

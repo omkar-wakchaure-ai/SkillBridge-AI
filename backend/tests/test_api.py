@@ -24,3 +24,16 @@ def test_auth_status_rejects_invalid_token() -> None:
     )
     assert response.status_code == 401
     assert response.json()["detail"] == "Invalid or expired token"
+
+
+def test_cors_preflight_allows_deployed_frontend() -> None:
+    origin = "https://skill-bridge-ai-zx9m.vercel.app"
+    response = client.options(
+        "/api/chat",
+        headers={
+            "Origin": origin,
+            "Access-Control-Request-Method": "POST",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == origin
