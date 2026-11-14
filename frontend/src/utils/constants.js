@@ -1,7 +1,7 @@
 // Global Application Constants
 
 export const APP_NAME = "PathPilot AI";
-export const API_BASE_URL = "http://localhost:8000/api";
+export const API_BASE_URL = "https://skillbridge-api-zn4z.onrender.com/api";
 
 export const CAREER_PATHS = [
   "AI/ML Engineer",
