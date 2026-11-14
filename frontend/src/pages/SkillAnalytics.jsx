@@ -3,9 +3,12 @@ import ReadinessChart from '../components/analytics/ReadinessChart';
 import SkillHistogram from '../components/analytics/SkillHistogram';
 import { apiClient } from '../services/apiClient';
 import { useAuth } from '../context/AuthContext';
+import { useLearnerProfile } from '../context/LearnerProfileCtx';
+import { calculateProgress } from '../utils/roadmapEngine';
 
 const SkillAnalytics = () => {
   const { isAuthenticated } = useAuth();
+  const { profile } = useLearnerProfile();
   const [dashboardData, setDashboardData] = useState(null);
   const [skillProgress, setSkillProgress] = useState([]);
   const [progressSummary, setProgressSummary] = useState(null);
@@ -22,12 +25,13 @@ const SkillAnalytics = () => {
   const assessmentsTaken = dashboardData?.assessments_taken || 0;
   const skillsMastered = skillProgress.filter(s => s.latest_score >= 70).length;
   const readinessScore = progressSummary ? Math.round(progressSummary.overall_progress_percentage * 0.9 + skillsMastered * 3) : 0;
+  const overallProgress = calculateProgress(profile);
 
   const kpiStats = [
     { label: "Total Learning Hours", value: `${totalHours}h`, trend: dashboardData ? `Across ${dashboardData.courses_enrolled || 0} courses` : "No data yet", icon: 'hours' },
     { label: "Skills Mastered", value: `${skillsMastered}`, trend: skillProgress.length > 0 ? `${skillProgress.length} skills tracked` : "Complete assessments first", icon: 'skills' },
     { label: "Assessments Passed", value: `${assessmentsTaken}`, trend: assessmentsTaken > 0 ? "Keep progressing" : "Take your first assessment", icon: 'assessments' },
-    { label: "Overall Progress", value: `${progressSummary?.overall_progress_percentage || 0}%`, trend: `${progressSummary?.completed_courses || 0} completed`, icon: 'rank' }
+    { label: "Overall Progress", value: `${overallProgress}%`, trend: `${profile.progress?.completedCourses?.length || 0} videos completed`, icon: 'rank' }
   ];
 
   const iconMap = {

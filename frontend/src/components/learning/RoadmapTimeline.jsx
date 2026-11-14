@@ -1,11 +1,14 @@
 import React from 'react';
 
-const RoadmapTimeline = ({ phases }) => {
+const RoadmapTimeline = ({ phases, overallProgress, onCompleteVideo }) => {
   return (
     <div className="relative pl-6 md:pl-8 py-4">
       {/* Main Vertical Track Line */}
       <div className="absolute left-[39px] md:left-[47px] top-4 bottom-12 w-1 rounded-full bg-slate-100">
-        <div className="w-full bg-indigo-500 rounded-full transition-all duration-1000" style={{ height: '35%' }}></div>
+        <div
+          className="w-full bg-indigo-500 rounded-full transition-all duration-1000"
+          style={{ height: `${overallProgress}%` }}
+        ></div>
       </div>
 
       <div className="space-y-8 relative">
@@ -57,45 +60,76 @@ const RoadmapTimeline = ({ phases }) => {
                 ))}
               </div>
 
-              {/* NEW: Curated Video Playlist Section */}
+              {/* YouTube resource links */}
               {phase.resources && phase.resources.length > 0 && (
                 <div className="mb-6 bg-slate-50 border border-slate-100 rounded-2xl p-4">
-                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
                     <svg className="w-3.5 h-3.5 text-red-500" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>
-                    Curated Playlist
+                    YouTube Resources
                   </h4>
+                  <p className="text-[10px] text-slate-500 mb-3">
+                    Open a tutorial on YouTube, then mark it complete to update your progress.
+                  </p>
                   <div className="space-y-2">
                     {phase.resources.map((res, rIdx) => (
-                      <a 
-                        key={rIdx} 
-                        href={res.url} 
-                        target="_blank" 
-                        rel="noreferrer"
-                        className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
-                          phase.status === 'Locked' ? 'bg-transparent border-transparent pointer-events-none' : 'bg-white border-slate-200 hover:border-indigo-300 hover:shadow-sm group'
+                      <div
+                        key={rIdx}
+                        className={`flex items-center gap-2 p-2 rounded-xl border transition-all ${
+                          phase.status === 'Locked'
+                            ? 'bg-transparent border-transparent opacity-60'
+                            : 'bg-white border-slate-200 hover:border-indigo-300 hover:shadow-sm'
                         }`}
                       >
-<div className="flex items-center gap-4 overflow-hidden">
-                          {/* ENLARGED: Play Button Icon */}
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${phase.status === 'Locked' ? 'bg-slate-200' : 'bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white shadow-sm'}`}>
-                            <svg className="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M3 22v-20l18 10-18 10z"/></svg>
+                        <a
+                          href={phase.status === 'Locked' ? undefined : res.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={`Search YouTube for ${res.title}`}
+                          className={`flex flex-1 min-w-0 items-center justify-between p-1 group ${
+                            phase.status === 'Locked' ? 'pointer-events-none' : ''
+                          }`}
+                        >
+                          <div className="flex items-center gap-4 overflow-hidden">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${
+                              phase.status === 'Locked'
+                                ? 'bg-slate-200'
+                                : 'bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white shadow-sm'
+                            }`}>
+                              <svg className="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M3 22v-20l18 10-18 10z"/></svg>
+                            </div>
+                            <div className="truncate">
+                              <p className={`text-sm font-bold truncate ${
+                                phase.status === 'Locked' ? 'text-slate-500' : 'text-slate-800'
+                              }`}>{res.title}</p>
+                              <p className="text-[10px] font-bold text-slate-400 mt-0.5 truncate">{res.channel}</p>
+                            </div>
                           </div>
-                          <div className="truncate">
-                            <p className={`text-sm font-bold truncate ${phase.status === 'Locked' ? 'text-slate-500' : 'text-slate-800'}`}>{res.title}</p>
-                            <p className="text-[10px] font-bold text-slate-400 mt-0.5 truncate">{res.channel}</p>
-                          </div>
-                        </div>
-                        <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-md flex-shrink-0 ml-3">
-                          {res.duration}
-                        </span>
-                      </a>
+                          <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-md flex-shrink-0 ml-3">
+                            {res.duration}
+                          </span>
+                        </a>
+                        <button
+                          type="button"
+                          disabled={phase.status === 'Locked' || res.completed}
+                          onClick={() => onCompleteVideo(res.courseId)}
+                          className={`flex-shrink-0 px-3 py-2 rounded-lg text-[10px] font-bold transition-colors ${
+                            res.completed
+                              ? 'bg-green-50 text-green-700 cursor-default'
+                              : phase.status === 'Locked'
+                                ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+                          }`}
+                        >
+                          {res.completed ? 'Completed' : 'Mark complete'}
+                        </button>
+                      </div>
                     ))}
                   </div>
                 </div>
               )}
               
               {/* Active Action Area */}
-              {phase.status === "In Progress" && (
+              {(phase.status === "In Progress" || phase.status === "Completed") && phase.resources?.length > 0 && (
                 <div className="mt-6 pt-6 border-t border-slate-100 flex flex-col md:flex-row items-center gap-6">
                   <div className="flex-1 w-full">
                     <div className="flex justify-between text-xs font-bold text-slate-500 mb-2">
@@ -106,7 +140,7 @@ const RoadmapTimeline = ({ phases }) => {
                       <div className="bg-indigo-600 h-2 rounded-full" style={{ width: `${phase.progress}%` }}></div>
                     </div>
                   </div>
-                  <button className="w-full md:w-auto px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5">
+                  <button type="button" className="w-full md:w-auto px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5">
                     Continue Learning
                   </button>
                 </div>

@@ -43,6 +43,10 @@ const SkillChip = ({ label, variant }) => {
 const GapAnalysisDashboard = ({ analysis }) => {
   const { target_job_title: role, current_skills, missing_skills, learning_roadmap } =
     analysis;
+  const totalComparedSkills = current_skills.length + missing_skills.length;
+  const matchPercentage = totalComparedSkills
+    ? Math.round((current_skills.length / totalComparedSkills) * 100)
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -63,8 +67,9 @@ const GapAnalysisDashboard = ({ analysis }) => {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
+              { label: 'Match', value: `${matchPercentage}%`, tone: 'text-indigo-600' },
               { label: 'Matched', value: current_skills.length, tone: 'text-emerald-600' },
               { label: 'Gaps', value: missing_skills.length, tone: 'text-rose-600' },
               { label: 'Steps', value: learning_roadmap.length, tone: 'text-indigo-600' },

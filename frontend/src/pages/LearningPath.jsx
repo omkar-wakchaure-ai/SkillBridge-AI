@@ -1,35 +1,53 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLearnerProfile } from '../context/LearnerProfileCtx';
-import { generateRoadmap } from '../utils/roadmapEngine';
+import {
+  calculatePhaseProgress,
+  calculateProgress,
+  generateRoadmap,
+  getCourseProgress
+} from '../utils/roadmapEngine';
 import RoadmapTimeline from '../components/learning/RoadmapTimeline';
 
 const LearningPath = () => {
   const navigate = useNavigate();
-  const { profile } = useLearnerProfile();
+  const { profile, markCourseComplete } = useLearnerProfile();
 
   const roadmap = useMemo(() => generateRoadmap(profile), [profile]);
+  const overallProgress = calculateProgress(profile);
 
   const phases = useMemo(() => {
     if (!roadmap) return [];
 
     return roadmap.phases.map((phase, idx) => {
-      let status = 'Locked';
-      if (idx === 0) status = 'In Progress';
-      if (profile.progress?.completedPhases?.includes(phase.id)) status = 'Completed';
-
-      const progress = profile.progress?.phaseProgress?.[phase.id] || 0;
+      const progress = calculatePhaseProgress(phase, profile.progress);
+      const completed = profile.progress?.completedPhases?.includes(phase.id)
+        || (phase.courses?.length > 0 && progress === 100);
+      const previousPhasesCompleted = roadmap.phases
+        .slice(0, idx)
+        .every(previousPhase => (
+          !previousPhase.courses?.length
+          || profile.progress?.completedPhases?.includes(previousPhase.id)
+          || calculatePhaseProgress(previousPhase, profile.progress) === 100
+        ));
+      const status = completed
+        ? 'Completed'
+        : idx === 0 || previousPhasesCompleted
+          ? 'In Progress'
+          : 'Locked';
 
       return {
         ...phase,
         status,
-        progress: status === 'In Progress' ? Math.max(10, progress) : undefined,
+        progress,
         skills: phase.skills || [],
         resources: (phase.courses || []).map(c => ({
+          courseId: c.id,
           title: c.title,
           channel: c.domain,
-          url: '#',
-          duration: c.duration
+          url: `https://www.youtube.com/results?search_query=${encodeURIComponent(`${c.title} ${c.domain} tutorial`)}`,
+          duration: c.duration,
+          completed: getCourseProgress(profile.progress, c.id) === 100
         }))
       };
     });
@@ -78,9 +96,25 @@ const LearningPath = () => {
             📆 {profile.studyDays?.length || 0} days/week
           </div>
         </div>
+        <div className="mt-6">
+          <div className="flex justify-between text-xs font-bold text-slate-500 mb-2">
+            <span>Overall video progress</span>
+            <span className="text-indigo-600">{overallProgress}%</span>
+          </div>
+          <div className="w-full bg-slate-100 rounded-full h-2">
+            <div
+              className="bg-indigo-600 h-2 rounded-full transition-all duration-500"
+              style={{ width: `${overallProgress}%` }}
+            ></div>
+          </div>
+        </div>
       </div>
       
-      <RoadmapTimeline phases={phases} />
+      <RoadmapTimeline
+        phases={phases}
+        overallProgress={overallProgress}
+        onCompleteVideo={markCourseComplete}
+      />
     </div>
   );
 };

@@ -6,6 +6,7 @@ from app.models.progress import Enrollment, Progress, ProgressHistory
 from app.models.assessment import Assessment, AssessmentResult
 from app.models.recommendation import Recommendation
 from app.models.roadmap import LearningPath, RoadmapItem
+from app.models.activity import UserActivity
 
 
 __all__ = [
@@ -24,6 +25,7 @@ __all__ = [
     "Recommendation",
     "LearningPath",
     "RoadmapItem",
+    "UserActivity",
 ]
 
 

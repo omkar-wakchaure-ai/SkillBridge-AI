@@ -1,7 +1,12 @@
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.activity import router as activity_router
 from app.config.settings import settings
+from app.database.init_db import init_db
 from app.api.auth import router as auth_router
 from app.api.profile import router as profile_router
 from app.api.career import router as career_router
@@ -18,10 +23,17 @@ from app.api.resume import router as resume_router
 from app.api.roadmap import router as roadmap_router
 
 
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
+    init_db()
+    yield
+
+
 app = FastAPI(
     title="PathPilot AI",
     description="Personalized AI-powered learning path platform",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
 
@@ -50,6 +62,7 @@ app.include_router(feedback_router, prefix="/api")
 app.include_router(recommendations_router, prefix="/api")
 app.include_router(resume_router, prefix="/api")
 app.include_router(roadmap_router, prefix="/api")
+app.include_router(activity_router, prefix="/api")
 
 
 @app.get("/health")

@@ -142,7 +142,10 @@ const OnboardingFlow = () => {
           {step === 2 && (
             <SkillLevelInput
               skills={formData.capabilities}
-              onChange={(k, v) => setFormData({...formData, capabilities: {...formData.capabilities, [k]: v}})}
+              onChange={(skill, value) => setFormData(prev => ({
+                ...prev,
+                capabilities: { ...prev.capabilities, [skill]: value }
+              }))}
               selectedStream={formData.selectedStream}
             />
           )}

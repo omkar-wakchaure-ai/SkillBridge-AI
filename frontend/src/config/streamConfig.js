@@ -167,6 +167,7 @@ export const DEFAULT_PROFILE = {
   notifications: [],
   progress: {
     completedCourses: [],
+    courseProgress: {},
     completedPhases: [],
     currentCourse: null,
     currentPhase: 0,

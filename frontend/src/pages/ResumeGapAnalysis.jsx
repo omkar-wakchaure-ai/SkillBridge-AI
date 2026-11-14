@@ -4,6 +4,7 @@ import { AlertCircle, ArrowRight, Loader2, Sparkles, Target } from 'lucide-react
 import ResumeUploader from '../components/resume/ResumeUploader';
 import AnalysisLoading from '../components/resume/AnalysisLoading';
 import GapAnalysisDashboard from '../components/resume/GapAnalysisDashboard';
+import TailoredResumeBuilder from '../components/resume/TailoredResumeBuilder';
 import { analyzeResume, validateResumeFile } from '../services/resumeApi';
 
 const SUGGESTED_ROLES = [
@@ -189,6 +190,9 @@ const ResumeGapAnalysis = () => {
             transition={{ duration: 0.4 }}
           >
             <GapAnalysisDashboard analysis={analysis} />
+            <div className="mt-6">
+              <TailoredResumeBuilder file={file} analysis={analysis} />
+            </div>
             <div className="mt-6 flex justify-center">
               <button
                 type="button"

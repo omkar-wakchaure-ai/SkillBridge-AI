@@ -1,36 +1,106 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { DEFAULT_PROFILE, STREAMS } from '../config/streamConfig';
+import { useAuth } from './AuthContext';
+import { apiClient } from '../services/apiClient';
 
 const LearnerProfileContext = createContext();
 
-const STORAGE_KEY = 'pathpilot_profile';
+const RESUMABLE_PATHS = new Set([
+  '/onboarding',
+  '/dashboard',
+  '/profile',
+  '/career',
+  '/learning',
+  '/roleplay',
+  '/certifications',
+  '/analytics',
+  '/courses',
+  '/resume-analysis'
+]);
 
-function loadProfile() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      return { ...DEFAULT_PROFILE, ...parsed };
-    }
-  } catch {}
-  return { ...DEFAULT_PROFILE };
-}
-
-function saveProfile(profile) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
-  } catch {}
-}
+export const isResumablePath = (path) => RESUMABLE_PATHS.has(path);
 
 export const LearnerProfileProvider = ({ children }) => {
-  const [profile, setProfile] = useState(loadProfile);
+  const { token } = useAuth();
+  const [profile, setProfile] = useState({ ...DEFAULT_PROFILE });
+  const [lastPath, setLastPath] = useState('/dashboard');
+  const [activityStatus, setActivityStatus] = useState(
+    localStorage.getItem('pathpilot_token') ? 'loading' : 'ready'
+  );
+  const [activityError, setActivityError] = useState('');
+  const activityLoadRef = useRef({ token: null, promise: null });
+
+  const loadActivity = useCallback(async () => {
+    const savedToken = localStorage.getItem('pathpilot_token');
+    if (!savedToken) {
+      activityLoadRef.current = { token: null, promise: null };
+      setProfile({ ...DEFAULT_PROFILE });
+      setLastPath('/dashboard');
+      setActivityError('');
+      setActivityStatus('ready');
+      return null;
+    }
+
+    const inFlight = activityLoadRef.current;
+    if (inFlight.token === savedToken && inFlight.promise) return inFlight.promise;
+
+    setActivityStatus('loading');
+    setActivityError('');
+    const promise = apiClient('/activity/me').then((activity) => {
+      if (activityLoadRef.current.token !== savedToken) return null;
+      const savedProfile = activity?.profile_data || {};
+      setProfile({
+        ...DEFAULT_PROFILE,
+        ...savedProfile,
+        progress: { ...DEFAULT_PROFILE.progress, ...savedProfile.progress }
+      });
+      setLastPath(isResumablePath(activity?.last_path) ? activity.last_path : '/dashboard');
+      setActivityStatus('ready');
+      return activity;
+    }).catch((error) => {
+      if (activityLoadRef.current.token !== savedToken) return null;
+      setActivityError(error.message || 'Could not load saved learning activity.');
+      setActivityStatus('error');
+      return null;
+    });
+    activityLoadRef.current = { token: savedToken, promise };
+    promise.then(() => {
+      if (activityLoadRef.current.promise === promise) {
+        activityLoadRef.current.promise = null;
+      }
+    });
+    return promise;
+  }, []);
 
   useEffect(() => {
-    saveProfile(profile);
-  }, [profile]);
+    loadActivity();
+  }, [token, loadActivity]);
+
+  useEffect(() => {
+    if (!token || activityStatus !== 'ready') return undefined;
+
+    const timer = setTimeout(async () => {
+      try {
+        await apiClient('/activity/me', {
+          method: 'PUT',
+          body: JSON.stringify({ profile_data: profile, last_path: lastPath })
+        });
+        setActivityError('');
+      } catch (error) {
+        setActivityError(error.message || 'Could not save learning activity.');
+        setActivityStatus('error');
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [activityStatus, lastPath, profile, token]);
 
   const updateProfile = useCallback((key, value) => {
     setProfile(prev => ({ ...prev, [key]: value }));
+  }, []);
+
+  const updateLastPath = useCallback((path) => {
+    if (isResumablePath(path)) setLastPath(path);
   }, []);
 
   const updateProfileMulti = useCallback((updates) => {
@@ -54,6 +124,30 @@ export const LearnerProfileProvider = ({ children }) => {
       ...prev,
       progress: { ...prev.progress, ...progressUpdates }
     }));
+  }, []);
+
+  const markCourseComplete = useCallback((courseId) => {
+    const courseKey = String(courseId);
+    setProfile(prev => {
+      const progress = prev.progress || {};
+      const completedCourses = Array.isArray(progress.completedCourses)
+        ? progress.completedCourses
+        : [];
+      const alreadyCompleted = completedCourses.some(id => String(id) === courseKey);
+      if (alreadyCompleted && Number(progress.courseProgress?.[courseKey]) === 100) return prev;
+
+      return {
+        ...prev,
+        progress: {
+          ...progress,
+          completedCourses: alreadyCompleted ? completedCourses : [...completedCourses, courseId],
+          courseProgress: {
+            ...progress.courseProgress,
+            [courseKey]: 100
+          }
+        }
+      };
+    });
   }, []);
 
   const addNotification = useCallback((notification) => {
@@ -101,11 +195,17 @@ export const LearnerProfileProvider = ({ children }) => {
   return (
     <LearnerProfileContext.Provider value={{
       profile,
+      lastPath,
+      activityStatus,
+      activityError,
+      reloadActivity: loadActivity,
+      updateLastPath,
       updateProfile,
       updateProfileMulti,
       resetProfile,
       completeOnboarding,
       updateProgress,
+      markCourseComplete,
       addNotification,
       setNotifications,
       markNotificationRead,

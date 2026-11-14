@@ -95,6 +95,15 @@ def test_analyze_requires_auth():
     assert response.status_code in (401, 403)
 
 
+def test_resume_draft_requires_auth():
+    response = unauth_client.post(
+        "/api/resume/draft",
+        data={"target_job_title": "AI/ML Engineer"},
+        files=_pdf_file(),
+    )
+    assert response.status_code in (401, 403)
+
+
 def test_analyze_rejects_unsupported_document():
     response = client.post(
         "/api/resume/analyze",
@@ -198,6 +207,89 @@ def test_analyze_handles_invalid_ai_payload(monkeypatch):
 
     response = _post()
     assert response.status_code == 502
+
+
+def test_generate_resume_draft_uses_only_user_confirmed_skills(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(
+        resume_service,
+        "extract_text_from_resume",
+        lambda _bytes, _filename: "Python engineer with a completed FastAPI project.",
+    )
+
+    def build_draft(role, resume_text, confirmed_skills):
+        seen["role"] = role
+        seen["resume_text"] = resume_text
+        seen["confirmed_skills"] = confirmed_skills
+        return "Candidate Name\nAI/ML Engineer\n\nTECHNICAL SKILLS\nPython, MLOps"
+
+    monkeypatch.setattr(resume_service, "build_tailored_resume_draft", build_draft)
+    response = client.post(
+        "/api/resume/draft",
+        data={
+            "target_job_title": "AI/ML Engineer",
+            "confirmed_skills": ["MLOps", "MLOps"],
+        },
+        files=_pdf_file(),
+    )
+
+    assert response.status_code == 200
+    assert seen["role"] == "AI/ML Engineer"
+    assert seen["confirmed_skills"] == ["MLOps"]
+    assert "Python engineer" in seen["resume_text"]
+    assert "TECHNICAL SKILLS" in response.json()["draft_text"]
+
+
+def test_generate_resume_draft_rejects_too_many_confirmed_skills(monkeypatch):
+    monkeypatch.setattr(
+        resume_service,
+        "extract_text_from_resume",
+        lambda _bytes, _filename: "Python engineer",
+    )
+    response = client.post(
+        "/api/resume/draft",
+        data={
+            "target_job_title": "AI/ML Engineer",
+            "confirmed_skills": [f"Skill {index}" for index in range(26)],
+        },
+        files=_pdf_file(),
+    )
+    assert response.status_code == 422
+    assert "no more than 25" in response.json()["detail"]
+
+
+def test_download_resume_pdf_requires_accuracy_confirmation():
+    response = client.post(
+        "/api/resume/pdf",
+        data={
+            "target_job_title": "AI/ML Engineer",
+            "draft_text": "Candidate Name\nAI/ML Engineer\n\nPROFESSIONAL SUMMARY\nPython developer",
+            "facts_confirmed": "false",
+        },
+    )
+    assert response.status_code == 422
+
+
+def test_download_resume_pdf_returns_valid_pdf():
+    from io import BytesIO
+    from pypdf import PdfReader
+
+    response = client.post(
+        "/api/resume/pdf",
+        data={
+            "target_job_title": "AI/ML Engineer",
+            "draft_text": (
+                "Candidate Name\nAI/ML Engineer\n\n"
+                "PROFESSIONAL SUMMARY\nPython engineer.\n- Built a model.\n\n"
+                "TECHNICAL SKILLS\nPython, SQL"
+            ),
+            "facts_confirmed": "true",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    assert response.content.startswith(b"%PDF-")
+    assert len(PdfReader(BytesIO(response.content)).pages) == 1
 
 
 def test_prompt_contains_role_and_resume():

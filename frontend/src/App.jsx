@@ -1,9 +1,11 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
 // Context Providers
 import { AuthProvider } from './context/AuthContext';
 import { LearnerProfileProvider } from './context/LearnerProfileCtx';
+import { useAuth } from './context/AuthContext';
+import { isResumablePath, useLearnerProfile } from './context/LearnerProfileCtx';
 
 // Layout
 import AppLayout from './layouts/AppLayout';
@@ -23,11 +25,26 @@ import SkillAnalytics from './pages/SkillAnalytics';
 import AllCourses from './pages/AllCourses';
 import ResumeGapAnalysis from './pages/ResumeGapAnalysis';
 
+const ActivityTracker = () => {
+  const location = useLocation();
+  const { isAuthenticated } = useAuth();
+  const { activityStatus, updateLastPath } = useLearnerProfile();
+
+  useEffect(() => {
+    if (isAuthenticated && activityStatus === 'ready' && isResumablePath(location.pathname)) {
+      updateLastPath(location.pathname);
+    }
+  }, [activityStatus, isAuthenticated, location.pathname, updateLastPath]);
+
+  return null;
+};
+
 const App = () => {
   return (
     <AuthProvider>
       <LearnerProfileProvider>
-        <Router>
+        <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <ActivityTracker />
           <Routes>
             {/* 1. Public Routes (No Sidebar/Navbar) */}
             <Route path="/" element={<Navigate to="/register" replace />} />

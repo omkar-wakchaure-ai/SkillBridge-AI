@@ -23,6 +23,11 @@ not commit or expose the key in frontend code. Then start the backend:
 
 Check `http://127.0.0.1:8000/health` for `{"status":"ok"}` and open
 `http://127.0.0.1:8000/docs` for the API documentation.
+The backend initializes missing SQLite tables on startup. Signed-in learner
+profiles and the last supported page visited are stored per account in the
+`user_activities` table and restored after login.
+During local development, Vite proxies frontend `/api` requests to
+`http://127.0.0.1:8000`; set `VITE_API_BASE_URL` when using a different API.
 
 ## Resume-to-role gap analysis
 
@@ -61,6 +66,13 @@ The prompt template and Gemini response parsing are in
 `app/ai/resume_gap_analyzer.py`; PDF and DOCX extraction are in
 `app/ai/resume_parser.py`. Invalid documents return a 4xx response, while
 Gemini or response-format failures return a descriptive 5xx response.
+
+After analysis, the frontend can request an editable draft from
+`POST /api/resume/draft`. Users may confirm only gap skills they genuinely have;
+the generated draft must be reviewed and accuracy-confirmed before
+`POST /api/resume/pdf` returns a downloadable PDF. The score is a keyword
+estimate, not a guarantee of ATS ranking or hiring outcomes. Missing skills are
+never added as qualifications without user confirmation.
 
 ## AI role-play chat
 

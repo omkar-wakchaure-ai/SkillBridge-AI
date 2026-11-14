@@ -4,19 +4,20 @@ import AuthHeroCard from './AuthHeroCard';
 import FloatingBubbles from './FloatingBubbles';
 import Field from './Field';
 import { useAuth } from '../../context/AuthContext';
-import { useLearnerProfile } from '../../context/LearnerProfileCtx';
+import { isResumablePath, useLearnerProfile } from '../../context/LearnerProfileCtx';
 import './auth-split.css';
 import './AuthForms.css';
 
 const AuthPage = ({ initialMode = 'register' }) => {
   const navigate = useNavigate();
   const { login, register, isAuthenticated } = useAuth();
-  const { updateProfile } = useLearnerProfile();
+  const { activityStatus, lastPath, updateProfile, reloadActivity } = useLearnerProfile();
   const [mode, setMode] = useState(initialMode);
   const [transitioning, setTransitioning] = useState(false);
   const [displayMode, setDisplayMode] = useState(initialMode);
   const [mounted, setMounted] = useState(false);
   const [error, setError] = useState('');
+  const [authSubmitted, setAuthSubmitted] = useState(false);
   const [authCardActive, setAuthCardActive] = useState(false);
   const [authCardRect, setAuthCardRect] = useState(null);
   const formCardRef = useRef(null);
@@ -29,6 +30,12 @@ const AuthPage = ({ initialMode = 'register' }) => {
     const timer = setTimeout(() => setMounted(true), 50);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (isAuthenticated && !authSubmitted && activityStatus !== 'loading') {
+      navigate(isResumablePath(lastPath) ? lastPath : '/dashboard', { replace: true });
+    }
+  }, [activityStatus, authSubmitted, isAuthenticated, lastPath, navigate]);
 
   useEffect(() => {
     if (formCardRef.current) {
@@ -64,12 +71,6 @@ const AuthPage = ({ initialMode = 'register' }) => {
     }
   }, []);
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/dashboard');
-    }
-  }, [isAuthenticated, navigate]);
-
   const switchMode = useCallback((newMode) => {
     if (newMode === mode || transitioning) return;
     setTransitioning(true);
@@ -84,9 +85,12 @@ const AuthPage = ({ initialMode = 'register' }) => {
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
+    setAuthSubmitted(true);
     try {
       await login(loginData.email, loginData.password);
-      navigate('/dashboard');
+      const activity = await reloadActivity();
+      const destination = activity?.last_path;
+      navigate(isResumablePath(destination) ? destination : '/dashboard', { replace: true });
     } catch (err) {
       setError(err?.message || 'Invalid email or password');
     }
@@ -95,6 +99,7 @@ const AuthPage = ({ initialMode = 'register' }) => {
   const handleRegister = async (e) => {
     e.preventDefault();
     setError('');
+    setAuthSubmitted(true);
     try {
       await register(registerData.email, registerData.password, registerData.name);
       if (registerData.name) {

@@ -1,9 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { useLearnerProfile } from '../context/LearnerProfileCtx';
 import { useAuth } from '../context/AuthContext';
 import { apiClient } from '../services/apiClient';
 import { STREAMS, DAILY_TIME_OPTIONS, DURATION_OPTIONS, DAY_OPTIONS } from '../config/streamConfig';
 import Modal from '../components/common/Modal';
+import { calculateProgress } from '../utils/roadmapEngine';
 
 const MyProfile = () => {
   const { profile, updateProfile, updateProfileMulti, weeklyAvailableMinutes, addNotification } = useLearnerProfile();
@@ -59,11 +60,7 @@ const MyProfile = () => {
   };
 
   const streamConfig = STREAMS[profile.selectedStream];
-  const overallProgress = useMemo(() => {
-    const completed = profile.progress?.completedCourses?.length || 0;
-    const total = streamConfig?.recommendedCourses?.length || 1;
-    return Math.min(100, Math.round((completed / total) * 100));
-  }, [profile.progress, streamConfig]);
+  const overallProgress = calculateProgress(profile);
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto min-h-screen space-y-6 font-sans animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -132,7 +129,7 @@ const MyProfile = () => {
               <p className="text-xl font-black text-slate-900">{overallProgress}% Complete</p>
             </div>
             <div className="text-xs font-bold text-slate-500 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
-              {profile.progress?.completedCourses?.length || 0} courses completed
+              {profile.progress?.completedCourses?.length || 0} videos completed
             </div>
           </div>
           <div className="w-full bg-slate-100 rounded-full h-3">

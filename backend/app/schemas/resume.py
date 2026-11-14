@@ -12,3 +12,7 @@ class ResumeGapAnalysis(BaseModel):
     current_skills: list[str] = Field(default_factory=list)
     missing_skills: list[str] = Field(default_factory=list)
     learning_roadmap: list[RoadmapStep] = Field(default_factory=list)
+
+
+class ResumeDraftResponse(BaseModel):
+    draft_text: str = Field(..., min_length=1, max_length=20000)

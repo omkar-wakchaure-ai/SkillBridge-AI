@@ -228,19 +228,43 @@ export function generateDailyPlan(profile) {
   return tasks;
 }
 
+export function getCourseProgress(progress, courseId) {
+  const savedProgress = progress?.courseProgress?.[courseId];
+  const completedCourses = Array.isArray(progress?.completedCourses)
+    ? progress.completedCourses
+    : [];
+  const markedComplete = completedCourses.some(id => String(id) === String(courseId));
+
+  if (savedProgress !== undefined && Number.isFinite(Number(savedProgress))) {
+    const percentage = Math.max(0, Math.min(100, Number(savedProgress)));
+    return markedComplete ? 100 : percentage;
+  }
+
+  return markedComplete ? 100 : 0;
+}
+
+export function calculatePhaseProgress(phase, progress) {
+  const courses = phase?.courses || [];
+  if (courses.length === 0) return 0;
+
+  const totalProgress = courses.reduce(
+    (total, course) => total + getCourseProgress(progress, course.id),
+    0
+  );
+  return Math.round(totalProgress / courses.length);
+}
+
 export function calculateProgress(profile) {
   const { progress, selectedStream } = profile;
   if (!progress || !selectedStream) return 0;
 
-  const completed = progress.completedCourses?.length || 0;
-  const streamConfig = STREAMS[selectedStream];
-  if (!streamConfig) return 0;
+  const roadmap = generateRoadmap(profile);
+  const courses = roadmap?.phases.flatMap(phase => phase.courses || []) || [];
+  if (courses.length === 0) return 0;
 
-  const total = streamConfig.recommendedCourses.length;
-  if (total === 0) return 0;
-
-  const phaseBonus = (progress.currentPhase || 0) * 5;
-  const courseProgress = (completed / total) * 100;
-
-  return Math.min(100, Math.round(courseProgress + phaseBonus));
+  const totalProgress = courses.reduce(
+    (total, course) => total + getCourseProgress(progress, course.id),
+    0
+  );
+  return Math.round(totalProgress / courses.length);
 }

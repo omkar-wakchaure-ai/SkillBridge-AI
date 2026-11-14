@@ -50,6 +50,7 @@ export const AuthProvider = ({ children }) => {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
+    localStorage.setItem('pathpilot_token', tokenData.access_token);
     setToken(tokenData.access_token);
     const userData = { email, name: fullName || email.split('@')[0] };
     setUser(userData);
@@ -64,6 +65,7 @@ export const AuthProvider = ({ children }) => {
     });
 
     const newToken = data.access_token;
+    localStorage.setItem('pathpilot_token', newToken);
     setToken(newToken);
 
     const userData = { email, name: email.split('@')[0] };

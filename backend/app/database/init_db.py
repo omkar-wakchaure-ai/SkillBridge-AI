@@ -18,6 +18,7 @@ from app.models import (
     Recommendation,
     LearningPath,
     RoadmapItem,
+    UserActivity,
 )
 
 
